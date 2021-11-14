@@ -9,7 +9,8 @@ pub struct Uid();
 
 #[derive(Serialize)]
 struct PID{
-    pid_val: u32
+    pid_val: i32,
+    process: String
 }
 
 #[get("/")]
@@ -24,19 +25,17 @@ async fn hello() -> impl Responder {
 
 #[post("/echo")]
 async fn echo(req_body: String) -> impl Responder {
-    let s = System::new_all();
-    let mut pids = Vec::new();
-    for (pid, processval) in s.processes() {
-        pids.push(pid);
-        println!("{}::{:?}", pid, processval);
-    }
     HttpResponse::Ok().body(req_body)
 }
 
 async fn get_pid_list()  -> impl Responder {
     let mut vec = Vec::new();
-
-    vec.push(PID{pid_val: 131});
+    let s = System::new_all();
+    for (pid, processval) in s.processes() {
+        vec.push(PID{process: processval.name().to_string(), pid_val: *pid});
+        println!("{}::{:?}", pid, processval.name());
+    }
+    vec.push(PID{process: "Redis Server".to_string(), pid_val: 6379});
     web::Json(vec)
 }
 
