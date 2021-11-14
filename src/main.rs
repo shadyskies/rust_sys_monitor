@@ -1,9 +1,16 @@
 mod ports_open;
-use std::collections::HashMap;
+// use std::collections::HashMap;
+use sysinfo::{ProcessExt, System, SystemExt};
 use ports_open::get_open_ports;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer,  Responder};
+use serde::{Deserialize, Serialize};
 // use std::process::Command;
 pub struct Uid();
+
+#[derive(Serialize)]
+struct PID{
+    pid_val: u32
+}
 
 #[get("/")]
 async fn hello() -> impl Responder {
@@ -17,7 +24,20 @@ async fn hello() -> impl Responder {
 
 #[post("/echo")]
 async fn echo(req_body: String) -> impl Responder {
+    let s = System::new_all();
+    let mut pids = Vec::new();
+    for (pid, processval) in s.processes() {
+        pids.push(pid);
+        println!("{}::{:?}", pid, processval);
+    }
     HttpResponse::Ok().body(req_body)
+}
+
+async fn get_pid_list()  -> impl Responder {
+    let mut vec = Vec::new();
+
+    vec.push(PID{pid_val: 131});
+    web::Json(vec)
 }
 
 async fn manual_hello() -> impl Responder {
@@ -31,6 +51,7 @@ async fn main() -> std::io::Result<()> {
             .service(hello)
             .service(echo)
             .route("/hey", web::get().to(manual_hello))
+            .route("/list", web::get().to(get_pid_list))
     })
     .bind("127.0.0.1:8080")?
     .run()

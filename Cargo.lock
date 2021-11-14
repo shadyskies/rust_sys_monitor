@@ -574,6 +574,7 @@ name = "first_project"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "serde",
  "sysinfo",
 ]
 

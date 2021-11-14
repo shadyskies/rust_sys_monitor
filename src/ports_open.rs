@@ -1,4 +1,4 @@
-use std::net::{SocketAddr, TcpStream};
+use std::net::{TcpStream};
 
     // return vector of ports that are open
 pub fn get_open_ports(start:u16, end:u16) -> Vec<u16> {
