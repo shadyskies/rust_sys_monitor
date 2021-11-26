@@ -1,6 +1,6 @@
 mod ports_open;
 // use std::collections::HashMap;
-use sysinfo::{DiskExt, NetworkExt, ProcessExt, System, SystemExt};
+use sysinfo::{DiskExt, NetworkExt, ProcessExt, ProcessorExt, System, SystemExt};
 use ports_open::get_open_ports;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer,  Responder};
 use serde::{Deserialize, Serialize};
@@ -54,26 +54,39 @@ async fn hardware_test(tera: web::Data<Tera>) -> impl Responder {
     let mut data = Context::new();
     let sys = System::new_all();
 
+    // disk info
     println!("=> disks:");
     let mut disks_name = Vec::new();
     let mut disks_fs = Vec::new();
     let mut disks_type = Vec::new();
     let mut disks_mount = Vec::new();
     let mut disks_available = Vec::new();
-    
+
+
     for disk in sys.disks() {
         println!("{:?}\n", disk.name());
         disks_name.push(disk.name().to_str());
         let tmp = disk.file_system();
         disks_fs.push(tmp);
         disks_type.push(disk.type_());
+        println!("Disk type: {:?}\n", disk.type_());
         disks_mount.push(disk.mount_point().to_str());
-        disks_available.push(disk.available_space());
+        disks_available.push(disk.available_space() / 1000000000);
     }
+
+    // sys info:
+    data.insert("tot_mem", &sys.total_memory());
+    data.insert("used_mem", &sys.used_memory());
+    data.insert("tot_swap", &sys.total_swap());
+    data.insert("used_swap", &sys.used_swap());
+    data.insert("num_processors", &sys.processors().len());
+
 
     data.insert("disks_name", &disks_name);
     data.insert("disks_fs", &disks_fs);
     // data.insert("disks_type", &disks_type);
+    data.insert("disks_mount", &disks_mount);
+    data.insert("disks_available", &disks_available);
     // println!("{:?}", disks_vec);
     let rendered = tera.render("hardware.html", &data).unwrap();
     HttpResponse::Ok().body(rendered)
