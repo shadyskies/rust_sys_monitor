@@ -1,10 +1,11 @@
 mod ports_open;
 // use std::collections::HashMap;
-use sysinfo::{DiskExt, NetworkExt, ProcessExt, ProcessorExt, System, SystemExt};
+use sysinfo::{DiskExt, NetworkExt, ProcessExt, ProcessorExt, System, SystemExt, RefreshKind};
 use ports_open::get_open_ports;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer,  Responder};
 use serde::{Deserialize, Serialize};
 use tera::{Tera, Context};
+use std::str;
 
 
 #[derive(Serialize)]
@@ -61,17 +62,21 @@ async fn hardware_test(tera: web::Data<Tera>) -> impl Responder {
     let mut disks_type = Vec::new();
     let mut disks_mount = Vec::new();
     let mut disks_available = Vec::new();
+    let mut disk_total = Vec::new();
 
 
     for disk in sys.disks() {
-        println!("{:?}\n", disk.name());
         disks_name.push(disk.name().to_str());
-        let tmp = disk.file_system();
-        disks_fs.push(tmp);
+        let s = match str::from_utf8(disk.file_system()) {
+            Ok(v) => v,
+            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+        };
+        disks_fs.push(s);
+        
         disks_type.push(disk.type_());
-        println!("Disk type: {:?}\n", disk.type_());
         disks_mount.push(disk.mount_point().to_str());
-        disks_available.push(disk.available_space() / 1000000000);
+        disks_available.push(disk.available_space() / 1000000);
+        disk_total.push(disk.total_space() / 1000000);
     }
 
     // sys info:
@@ -87,9 +92,26 @@ async fn hardware_test(tera: web::Data<Tera>) -> impl Responder {
     // data.insert("disks_type", &disks_type);
     data.insert("disks_mount", &disks_mount);
     data.insert("disks_available", &disks_available);
-    // println!("{:?}", disks_vec);
+    data.insert("disks_total", &disk_total);
+    
     let rendered = tera.render("hardware.html", &data).unwrap();
     HttpResponse::Ok().body(rendered)
+}
+
+// TODO: processor usage shows 0 
+#[get("/api/cpu/")]
+async fn get_cpus() -> impl Responder {
+    let s = System::new_with_specifics(RefreshKind::new().with_cpu());
+    let mut _usage = Vec::new();
+    for processor in s.processors() {
+        println!("{}%", processor.cpu_usage());
+        _usage.push(processor.cpu_usage());
+    }
+    for processor in s.processors() {
+        println!("{}%", processor.cpu_usage());
+        // _usage.push(processor.cpu_usage());
+    }
+    web::Json(_usage)
 }
 
 
@@ -105,7 +127,7 @@ async fn main() -> std::io::Result<()> {
             .route("/pid_list", web::get().to(get_pid_list))
             .route("/index", web::get().to(index))
             .route("/hardware_test", web::get().to(hardware_test))
-
+            .service(get_cpus)
         })
     .bind("127.0.0.1:8080")?
     .run()

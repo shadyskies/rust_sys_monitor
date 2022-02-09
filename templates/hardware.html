@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <title>Hardware</title>
 </head>
 <body>
@@ -13,7 +14,9 @@
         <p>Disk name :: {{disks_name[i]}}</p>
         <p>Disk fs :: {{disks_fs[i]}}</p>
         <p>Disk mount :: {{disks_mount[i]}}</p>
-        <p>Disk storage availability :: {{disks_available[i]}} GB</p>
+        <p>Disk storage availability :: {{disks_available[i]}} MB</p>
+        <p>Total disk space :: {{disks_total[i]}}MB</p>
+        <hr>
     {% endfor %}
 
     <h3>Sys Info</h3>
@@ -22,8 +25,11 @@
     <p>Total swap: {{tot_swap}} B</p>
     <p>Used swap: {{used_swap}} B</p>
     <p>Num processors: {{num_processors}}</p>
-    {% for i in range(end=4) %}
-        <p>Cpu {{i}}: {{cpu_usage[i]}}</p>
-    {% endfor %}
+
+    <script>
+        $.get("/api/cpu/", function(data, status){
+            console.log(JSON.stringify(data));
+        });
+    </script>
 </body>
 </html>
