@@ -5,7 +5,7 @@ use ports_open::get_open_ports;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer,  Responder};
 use serde::{Deserialize, Serialize};
 use tera::{Tera, Context};
-use std::str;
+use std::{str, collections::HashMap};
 
 
 #[derive(Serialize)]
@@ -101,17 +101,30 @@ async fn hardware_test(tera: web::Data<Tera>) -> impl Responder {
 // TODO: processor usage shows 0 
 #[get("/api/cpu/")]
 async fn get_cpus() -> impl Responder {
-    let s = System::new_with_specifics(RefreshKind::new().with_cpu());
+    let mut s = System::new_all();
+    s.refresh_all();
     let mut _usage = Vec::new();
+    let mut _freq = Vec::new();
     for processor in s.processors() {
-        println!("{}%", processor.cpu_usage());
+        println!("{}%",processor.cpu_usage() - processor.cpu_usage());
         _usage.push(processor.cpu_usage());
+        _freq.push(processor.frequency());
     }
-    for processor in s.processors() {
-        println!("{}%", processor.cpu_usage());
-        // _usage.push(processor.cpu_usage());
-    }
-    web::Json(_usage)
+    let mut dict = HashMap::new();
+    dict.entry("usage").or_insert(_usage);
+    // dict.entry("freq").or_insert(_freq );
+    web::Json(dict)
+}
+
+#[get("/api/sysinfo/")]
+async fn get_sysinfo() -> impl Responder {
+    let dict = HashMap::new();
+    let mut s = System::new_all();
+    dict.insert("users", s.users());
+    dict.insert("host_name", s.host_name());
+    dict.insert("kernel_version", s.kernel_version());
+    dict.insert("os_version", s.os_version());
+    web::Json(dict)
 }
 
 
@@ -128,6 +141,7 @@ async fn main() -> std::io::Result<()> {
             .route("/index", web::get().to(index))
             .route("/hardware_test", web::get().to(hardware_test))
             .service(get_cpus)
+            .service(get_sysinfo)
         })
     .bind("127.0.0.1:8080")?
     .run()
