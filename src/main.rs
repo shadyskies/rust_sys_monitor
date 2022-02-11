@@ -1,6 +1,6 @@
 mod ports_open;
 // use std::collections::HashMap;
-use sysinfo::{DiskExt, NetworkExt, ProcessExt, ProcessorExt, System, SystemExt, RefreshKind};
+use sysinfo::{DiskExt, NetworkExt, ProcessExt, ProcessorExt, System, SystemExt, RefreshKind, NetworksExt};
 use ports_open::get_open_ports;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer,  Responder};
 use serde::{Deserialize, Serialize};
@@ -118,15 +118,29 @@ async fn get_cpus() -> impl Responder {
 
 #[get("/api/sysinfo/")]
 async fn get_sysinfo() -> impl Responder {
-    let dict = HashMap::new();
+    let mut dict = HashMap::new();
     let mut s = System::new_all();
-    dict.insert("users", s.users());
-    dict.insert("host_name", s.host_name());
-    dict.insert("kernel_version", s.kernel_version());
-    dict.insert("os_version", s.os_version());
+    println!("kernel version: {:?}", s.kernel_version());
+    println!("users: {:?}", s.users());
+    println!("long os version: {:?}", s.long_os_version());
+    println!("hostname: {:?}", s.host_name());
+    // dict.insert("users", s.users());
+    dict.insert("kernel", s.kernel_version());
+    dict.insert("os_version", s.long_os_version());
+    dict.insert("hostname", s.host_name());
     web::Json(dict)
 }
 
+#[get("/api/netinfo/")]
+async fn get_netinfo() -> impl Responder {
+    let mut dict = HashMap::new();
+    let mut s = System::new_all();
+    let networks = s.networks_mut();
+    print("networks: {:?}", networks)
+    networks.refresh_networks_list();
+    dict.insert("some", "key");
+    web::Json(dict)
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -142,6 +156,7 @@ async fn main() -> std::io::Result<()> {
             .route("/hardware_test", web::get().to(hardware_test))
             .service(get_cpus)
             .service(get_sysinfo)
+            .service(get_netinfo)
         })
     .bind("127.0.0.1:8080")?
     .run()
